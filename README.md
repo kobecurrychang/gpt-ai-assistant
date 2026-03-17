@@ -58,6 +58,16 @@ GPT AI Assistant is an application that is implemented using the OpenAI API and 
    npm start
    ```
 
+   > For local testing, expose your server with a tunnel tool such as [ngrok](https://ngrok.com/) (`ngrok http 3000`) and use the generated URL as `APP_URL`.
+
+5. In your LINE channel settings, set the webhook URL to:
+
+   ```
+   https://<your-public-url>/webhook
+   ```
+
+   > The webhook path defaults to `/webhook` and can be changed with the `APP_WEBHOOK_PATH` env variable.
+
 ### Docker
 
 ```bash
@@ -66,12 +76,22 @@ cp .env.example .env
 docker-compose up -d
 ```
 
+Set `APP_PORT` in `.env` to match the port exposed in `docker-compose.yaml` (default `3000`).
+
 ### Deploy to Vercel
 
 1. Fork this repository.
 2. Import the project in [Vercel](https://vercel.com/).
-3. Set the environment variables (`OPENAI_API_KEY`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET`, `APP_URL`) in the Vercel project settings.
-4. Deploy. After deployment, set the webhook URL in your LINE channel to `https://<your-vercel-domain>/webhook`.
+3. Set the following environment variables in the Vercel project settings:
+   - `OPENAI_API_KEY`
+   - `LINE_CHANNEL_ACCESS_TOKEN`
+   - `LINE_CHANNEL_SECRET`
+   - `APP_URL` — set to `https://<your-vercel-domain>`
+4. Deploy. After deployment, set the webhook URL in your LINE channel to:
+
+   ```
+   https://<your-vercel-domain>/webhook
+   ```
 
 ## News
 
