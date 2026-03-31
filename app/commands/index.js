@@ -29,6 +29,7 @@ import COMMAND_SUM_SUM from './sum-sum.js';
 import COMMAND_SYS_COMMAND from './sys-command.js';
 import COMMAND_SYS_DEPLOY from './sys-deploy.js';
 import COMMAND_SYS_DOC from './sys-doc.js';
+import COMMAND_SYS_PROFILE from './sys-profile.js';
 import COMMAND_SYS_REPORT from './sys-report.js';
 import COMMAND_SYS_VERSION from './sys-version.js';
 import COMMAND_TRANSLATE_TO_EN from './translate-to-en.js';
@@ -63,6 +64,7 @@ export const ALL_COMMANDS = [
   COMMAND_SYS_COMMAND,
   COMMAND_SYS_DEPLOY,
   COMMAND_SYS_DOC,
+  COMMAND_SYS_PROFILE,
   COMMAND_SYS_REPORT,
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
@@ -123,6 +125,7 @@ export {
   COMMAND_SYS_COMMAND,
   COMMAND_SYS_DEPLOY,
   COMMAND_SYS_DOC,
+  COMMAND_SYS_PROFILE,
   COMMAND_SYS_REPORT,
   COMMAND_SYS_VERSION,
   COMMAND_TRANSLATE_TO_EN,
