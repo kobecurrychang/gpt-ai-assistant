@@ -1,20 +1,25 @@
 /**
- * US Futures Market (CME Group) holiday & early-close schedule calculator.
+ * US Futures Market (CME / NYMEX / COMEX) holiday schedule calculator.
  *
- * Product groups covered:
- *   Energy  → WTI Crude Oil (CL), Natural Gas (NG)  — NYMEX
- *   Index   → E-mini S&P 500 (ES), Nasdaq 100 (NQ), Dow Jones (YM) — CME
- *   Metals  → Gold (GC), Silver (SI) — COMEX
+ * Product groups:
+ *   index  → E-mini S&P 500 (ES), Nasdaq 100 (NQ), Dow Jones (YM)  — CME
+ *   energy → WTI Crude Oil (CL), Natural Gas (NG)                  — NYMEX
+ *   metals → Gold (GC), Silver (SI)                                 — COMEX
  *
- * All Taiwan times are UTC+8 (no DST).
- * CME uses Central Time: CDT = UTC-5 (mid-Mar → early Nov),
- *                        CST = UTC-6 (early Nov → mid-Mar).
+ * Data source: CME Group official holiday advisory PDFs.
+ * Close times are in CT (Central Time). Taiwan = UTC+8 (no DST).
+ * CDT = UTC-5 (2nd Sun Mar → 1st Sun Nov), CST = UTC-6 (otherwise).
  *
- * Rules applied:
- *  Full close (all products) : 9 federal holidays CME observes
- *  Full close (index+metals) : Good Friday (energy stays open on Good Friday)
- *  Early close (all products): Thanksgiving Eve, Independence Day Eve,
- *                               Christmas Eve, New Year's Eve  — at 13:00 CT
+ * ⚠ CME finalises exact minute-precision close times ~2 weeks before each
+ *   holiday. Always verify at https://www.cmegroup.com/trading-hours.html
+ *   before trading around holidays.
+ *
+ * Per-product holiday types
+ * ──────────────────────────────────────────────────────────────────────────
+ * 'full'           → no electronic trading at all
+ * 'HH:MM'          → early close at that CT time
+ * 'special_HH:MM'  → special abbreviated session ending at that CT time
+ *                    (used for Good Friday when NFP falls on that day)
  */
 
 /* ─── Date helpers ─────────────────────────────────────────────────────────── */
@@ -37,7 +42,6 @@ const getEaster = (year) => {
   return new Date(year, month - 1, day);
 };
 
-// If Saturday → Friday, if Sunday → Monday
 const observe = (date) => {
   const dow = date.getDay();
   if (dow === 6) return new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
@@ -45,7 +49,6 @@ const observe = (date) => {
   return date;
 };
 
-// n-th weekday in month (n negative = from end, e.g. -1 = last)
 const nthWeekday = (year, month, weekday, n) => {
   if (n > 0) {
     const first = new Date(year, month, 1);
@@ -67,177 +70,134 @@ const fmt = (date) => {
 const WD_ZH = ['日', '一', '二', '三', '四', '五', '六'];
 const wdZH = (date) => `週${WD_ZH[date.getDay()]}`;
 
-const isBizDay = (date) => ![0, 6].includes(date.getDay());
-
-// Last business day strictly before `date`
-const prevBizDay = (date) => {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  do { d.setDate(d.getDate() - 1); } while (!isBizDay(d));
-  return d;
-};
-
-/* ─── Timezone conversion ───────────────────────────────────────────────────── */
+/* ─── Timezone: CT → Taiwan (UTC+8) ────────────────────────────────────────── */
 
 // US DST: 2nd Sunday in March → 1st Sunday in November
 const isCDT = (date) => {
   const y = date.getFullYear();
-  const start = nthWeekday(y, 2, 0, 2); // 2nd Sun Mar
+  const start = nthWeekday(y, 2, 0, 2);  // 2nd Sun Mar
   const end   = nthWeekday(y, 10, 0, 1); // 1st Sun Nov
   return date >= start && date < end;
 };
 
 /**
- * Convert a CT clock time on a US date to Taiwan time (UTC+8).
- * @param {Date}   usDate   - The US calendar date
- * @param {number} ctHour   - Hour in CT (24-h)
- * @param {number} ctMin    - Minute in CT
- * @returns {{ time: string, dateStr: string, date: Date, zone: string }}
+ * Convert a CT clock-time on a US date to Taiwan time.
+ * @param {Date}   usDate
+ * @param {string} ctStr  – "HH:MM" in CT
+ * @returns {{ twTime: string, twDateStr: string, twDate: Date, zone: string, offset: number }}
  */
-const ctToTW = (usDate, ctHour, ctMin = 0) => {
+const ctToTW = (usDate, ctStr) => {
+  const [ctH, ctM] = ctStr.split(':').map(Number);
   const summer = isCDT(usDate);
-  // CT offset from UTC: CDT = -5, CST = -6
-  const ctOffsetFromUTC = summer ? -5 : -6;
-  const twOffsetFromUTC = 8;
+  const ctOffsetNeg = summer ? 5 : 6;   // |CT offset from UTC|
+  const offset = summer ? 13 : 14;      // CT → Taiwan hours to add
 
-  const ctMin24 = ctHour * 60 + ctMin;
-  const utcMin  = ctMin24 - ctOffsetFromUTC * 60;   // subtract negative → add
-  const twMin   = utcMin  + twOffsetFromUTC * 60;
+  const ctMin = ctH * 60 + ctM;
+  const utcMin = ctMin + ctOffsetNeg * 60;
+  const twMin  = utcMin + 8 * 60;
 
-  const dayOffset = Math.floor(twMin / 1440);
-  const rem = twMin % 1440;
-  const twH = Math.floor(rem / 60);
-  const twM = rem % 60;
+  const dayOff = Math.floor(twMin / 1440);
+  const rem    = twMin % 1440;
+  const twH    = Math.floor(rem / 60);
+  const twMi   = rem % 60;
 
-  const twDate = new Date(
-    usDate.getFullYear(),
-    usDate.getMonth(),
-    usDate.getDate() + dayOffset,
-  );
-
+  const twDate = new Date(usDate.getFullYear(), usDate.getMonth(), usDate.getDate() + dayOff);
   return {
-    time:    `${String(twH).padStart(2, '0')}:${String(twM).padStart(2, '0')}`,
-    dateStr: fmt(twDate),
-    date:    twDate,
-    zone:    summer ? 'CDT' : 'CST',
+    twTime:    `${String(twH).padStart(2, '0')}:${String(twMi).padStart(2, '0')}`,
+    twDateStr: fmt(twDate),
+    twDate,
+    zone:   summer ? 'CDT' : 'CST',
+    offset, // hours added CT→TW
   };
+};
+
+/* ─── Per-product close-time templates ─────────────────────────────────────── */
+// 'full' = no trading. Time strings are CT "HH:MM".
+// Based on CME 2026 advisory; pattern is consistent across years.
+// ⚠ CME may adjust by a few minutes; always verify the official advisory.
+
+const SCHEDULES = {
+  fullAll:    { index: 'full',  energy: 'full',  metals: 'full'  },
+  // Most US equity-linked holidays
+  standard:   { index: '12:15', energy: '12:30', metals: '12:30' },
+  // Memorial Day / Labor Day – energy/metals slightly later
+  memorial:   { index: '12:00', energy: '13:30', metals: '13:30' },
+  // Good Friday (normal year): all full close
+  goodFriAll: { index: 'full',  energy: 'full',  metals: 'full'  },
+  // Good Friday (NFP on Good Friday, e.g. 2026): index abbreviated; others closed
+  goodFriNFP: { index: '08:15', energy: 'full',  metals: 'full'  },
 };
 
 /* ─── Main export ───────────────────────────────────────────────────────────── */
 
 /**
- * @typedef {{ dateStr: string, weekday: string, name: string, products: string, note?: string }} FullCloseEntry
- * @typedef {{ usDateStr: string, usWeekday: string, name: string, products: string,
- *             twDateStr: string, twWeekday: string, twTime: string, ctRef: string }} EarlyCloseEntry
+ * @param {Date}   date      - US holiday date
+ * @param {string} name      - Holiday name
+ * @param {object} schedule  - { index, energy, metals } – 'full' or 'HH:MM' in CT
+ * @returns {object}         - Enriched holiday entry with Taiwan times
+ */
+const buildEntry = (date, name, schedule) => {
+  const resolve = (ct) => {
+    if (ct === 'full') return { close: 'full' };
+    const tw = ctToTW(date, ct);
+    return {
+      close:     ct,
+      ctZone:    tw.zone,
+      twTime:    tw.twTime,
+      twDateStr: tw.twDateStr,
+      twWeekday: wdZH(tw.twDate),
+      offset:    tw.offset,
+    };
+  };
+  return {
+    dateStr:  fmt(date),
+    weekday:  wdZH(date),
+    name,
+    index:    resolve(schedule.index),
+    energy:   resolve(schedule.energy),
+    metals:   resolve(schedule.metals),
+  };
+};
+
+/**
+ * Returns an array of holiday entries for the given year,
+ * each with per-product close info and Taiwan times.
  *
  * @param {number} year
- * @returns {{ fullClose: FullCloseEntry[], earlyClose: EarlyCloseEntry[] }}
+ * @returns {Array<{dateStr, weekday, name, index, energy, metals}>}
  */
 const getFuturesHolidays = (year) => {
-  /* ── Fixed dates ── */
-  const easter         = getEaster(year);
-  const goodFriday     = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() - 2);
-  const newYearsDay    = observe(new Date(year, 0,  1));
-  const juneteenth     = year >= 2022 ? observe(new Date(year, 5, 19)) : null;
-  const independenceDay= observe(new Date(year, 6,  4));
-  const christmasDay   = observe(new Date(year, 11, 25));
+  const easter        = getEaster(year);
+  const goodFriday    = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() - 2);
 
-  /* ── Floating dates ── */
-  const mlkDay         = nthWeekday(year, 0,  1, 3);   // 3rd Mon Jan
-  const presidentsDay  = nthWeekday(year, 1,  1, 3);   // 3rd Mon Feb
-  const memorialDay    = nthWeekday(year, 4,  1, -1);  // Last Mon May
-  const laborDay       = nthWeekday(year, 8,  1, 1);   // 1st Mon Sep
-  const thanksgiving   = nthWeekday(year, 10, 4, 4);   // 4th Thu Nov
+  // Is NFP (Employment Situation) released on Good Friday?
+  // NFP = first Friday of each month. Check if GF === first Friday of its month.
+  const nfpOnGF = fmt(nthWeekday(goodFriday.getFullYear(), goodFriday.getMonth(), 5, 1)) === fmt(goodFriday);
 
-  /* ── Good Friday equity-index special note ──
-   * Energy (NYMEX CL/NG) and Metals (COMEX GC/SI) are fully closed on Good Friday.
-   * Equity index (ES/NQ/YM) is normally also closed, BUT in years when the US
-   * Employment Situation (NFP) report falls on Good Friday (e.g. 2026), CME runs
-   * an abbreviated session that ends at 09:15 CT (= 22:15 台灣時間 same day).
-   * Always verify via CME's official holiday advisory before trading.
-   */
-  const nfpOnGoodFriday = (() => {
-    // NFP is released on the first Friday of the month (usually April, sometimes March/May).
-    // Check if the first Friday of the same month as Good Friday equals Good Friday.
-    const firstFriOfMonth = nthWeekday(goodFriday.getFullYear(), goodFriday.getMonth(), 5, 1);
-    return fmt(firstFriOfMonth) === fmt(goodFriday);
-  })();
+  const mlkDay        = nthWeekday(year, 0,  1, 3);
+  const presidentsDay = nthWeekday(year, 1,  1, 3);
+  const memorialDay   = nthWeekday(year, 4,  1, -1);
+  const juneteenth    = year >= 2022 ? observe(new Date(year, 5, 19)) : null;
+  const independenceDay = observe(new Date(year, 6, 4));
+  const laborDay      = nthWeekday(year, 8,  1, 1);
+  const thanksgiving  = nthWeekday(year, 10, 4, 4);
+  const christmasDay  = observe(new Date(year, 11, 25));
+  const newYearsDay   = observe(new Date(year, 0, 1));
 
-  const goodFridayNote = nfpOnGoodFriday
-    ? `指數（ES/NQ/YM）因 NFP 就業報告當日，設縮短交易至 09:15 CT（台灣時間 ${ctToTW(goodFriday, 9, 15).time} 同日）；能源・貴金屬全日無交易`
-    : '能源（CL/NG）・貴金屬（GC/SI）・指數（ES/NQ/YM）全日無交易';
+  const holidays = [
+    buildEntry(newYearsDay,      "元旦 (New Year's Day)",             SCHEDULES.fullAll),
+    buildEntry(mlkDay,           '馬丁路德金紀念日 (MLK Day)',           SCHEDULES.standard),
+    buildEntry(presidentsDay,    "總統日 (Presidents' Day)",           SCHEDULES.standard),
+    buildEntry(goodFriday,       '耶穌受難日 (Good Friday)',            nfpOnGF ? SCHEDULES.goodFriNFP : SCHEDULES.goodFriAll),
+    buildEntry(memorialDay,      '陣亡將士紀念日 (Memorial Day)',        SCHEDULES.memorial),
+    ...(juneteenth ? [buildEntry(juneteenth, '六月節 (Juneteenth)',    SCHEDULES.standard)] : []),
+    buildEntry(independenceDay,  '獨立紀念日 (Independence Day)',       SCHEDULES.standard),
+    buildEntry(laborDay,         '勞動節 (Labor Day)',                 SCHEDULES.memorial),
+    buildEntry(thanksgiving,     '感恩節 (Thanksgiving Day)',           SCHEDULES.fullAll),
+    buildEntry(christmasDay,     '聖誕節 (Christmas Day)',              SCHEDULES.fullAll),
+  ];
 
-  /* ── Full close list ── */
-  const fullClose = [
-    { date: newYearsDay,    name: "元旦 (New Year's Day)",            products: 'all' },
-    { date: mlkDay,         name: '馬丁路德金紀念日 (MLK Day)',          products: 'all' },
-    { date: presidentsDay,  name: "總統日 (Presidents' Day)",          products: 'all' },
-    { date: goodFriday,     name: '耶穌受難日 (Good Friday)',           products: 'all',
-      note: goodFridayNote },
-    { date: memorialDay,    name: '陣亡將士紀念日 (Memorial Day)',       products: 'all' },
-    ...(juneteenth ? [{ date: juneteenth, name: '六月節 (Juneteenth)', products: 'all' }] : []),
-    { date: independenceDay,name: '獨立紀念日 (Independence Day)',      products: 'all' },
-    { date: laborDay,       name: '勞動節 (Labor Day)',                products: 'all' },
-    { date: thanksgiving,   name: '感恩節 (Thanksgiving Day)',          products: 'all' },
-    { date: christmasDay,   name: '聖誕節 (Christmas Day)',             products: 'all' },
-  ].sort((a, b) => a.date - b.date);
-
-  const isFullCloseDate = (d) => fullClose.some((h) => fmt(h.date) === fmt(d));
-
-  /* ── Early close list ── */
-  const earlyCloseRaw = [];
-
-  const addEarlyClose = (usDate, name, ctHour = 13) => {
-    if (!isBizDay(usDate) || isFullCloseDate(usDate)) return;
-    const tw = ctToTW(usDate, ctHour, 0);
-    earlyCloseRaw.push({
-      usDate,
-      name,
-      products: 'all',
-      twTime:   tw.time,
-      twDate:   tw.date,
-      twDateStr:tw.dateStr,
-      ctRef:    `13:00 CT (${tw.zone})`,
-    });
-  };
-
-  // Independence Day Eve: July 3 is traditionally the half-day before July 4.
-  // Only add when July 3 is a regular business day (not the holiday itself).
-  const july3 = new Date(year, 6, 3);
-  addEarlyClose(july3, '獨立紀念日前夕 (Independence Day Eve)');
-
-  // Thanksgiving Eve = Wednesday before Thanksgiving
-  const tksEve = new Date(thanksgiving.getFullYear(), thanksgiving.getMonth(), thanksgiving.getDate() - 1);
-  addEarlyClose(tksEve, '感恩節前夕 (Thanksgiving Eve)');
-
-  // Christmas Eve
-  addEarlyClose(new Date(year, 11, 24), '平安夜 (Christmas Eve)');
-
-  // New Year's Eve
-  addEarlyClose(new Date(year, 11, 31), "除夕跨年 (New Year's Eve)");
-
-  const earlyClose = earlyCloseRaw
-    .sort((a, b) => a.usDate - b.usDate)
-    .map((e) => ({
-      usDateStr: fmt(e.usDate),
-      usWeekday: wdZH(e.usDate),
-      name:      e.name,
-      products:  e.products,
-      twDateStr: e.twDateStr,
-      twWeekday: wdZH(e.twDate),
-      twTime:    e.twTime,
-      ctRef:     e.ctRef,
-    }));
-
-  return {
-    fullClose: fullClose.map((h) => ({
-      dateStr:  fmt(h.date),
-      weekday:  wdZH(h.date),
-      name:     h.name,
-      products: h.products,
-      note:     h.note || null,
-    })),
-    earlyClose,
-  };
+  return holidays.sort((a, b) => (a.dateStr < b.dateStr ? -1 : 1));
 };
 
 export default getFuturesHolidays;

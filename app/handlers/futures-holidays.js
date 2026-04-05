@@ -8,63 +8,63 @@ import Context from '../context.js';
  */
 const check = (context) => context.hasCommand(COMMAND_FUTURES_HOLIDAYS);
 
-/**
- * Parse a 4-digit year from user input. Defaults to current year.
- * @param {string} text
- * @returns {number}
- */
 const parseYear = (text) => {
   const match = text.match(/\b(19|20)\d{2}\b/);
   return match ? parseInt(match[0], 10) : new Date().getFullYear();
 };
 
-const PRODUCTS_LABEL = {
-  all:          '能源・指數・貴金屬',
-  index_metals: '指數・貴金屬',
+/* ─── Formatting helpers ─────────────────────────────────────────────────── */
+
+/**
+ * Render one product's close info.
+ * @param {object} p - { close: 'full' | 'HH:MM', twTime, twDateStr, twWeekday, ctZone, offset }
+ * @param {string} label - e.g. '指數'
+ * @returns {string}
+ */
+const fmtProduct = (p, label) => {
+  if (p.close === 'full') return `  ${label}：全日無交易`;
+  return `  ${label}：${p.close} CT (${p.ctZone}) → 台灣 ${p.twDateStr}（${p.twWeekday}）${p.twTime}`;
 };
 
 /**
- * Build the formatted reply text (Traditional Chinese).
+ * Build the formatted reply for one year.
  * @param {number} year
  * @returns {string}
  */
 const buildReply = (year) => {
-  const { fullClose, earlyClose } = getFuturesHolidays(year);
+  const holidays = getFuturesHolidays(year);
 
-  /* ── Full close section ── */
-  const fmtFull = (h) => {
-    const line = `▸ ${h.dateStr}（${h.weekday}）${h.name}`;
-    return h.note ? `${line}\n  ⚠ ${h.note}` : line;
-  };
+  const lines = holidays.map((h) => {
+    const idxFull    = h.index.close  === 'full';
+    const engFull    = h.energy.close === 'full';
+    const metFull    = h.metals.close === 'full';
+    const allFull    = idxFull && engFull && metFull;
 
-  const fullSection = [
-    `【完全休市 — ${PRODUCTS_LABEL.all}】`,
-    ...fullClose.map(fmtFull),
+    if (allFull) {
+      return `▸ ${h.dateStr}（${h.weekday}）${h.name}\n  全商品全日無交易`;
+    }
+
+    const rows = [
+      `▸ ${h.dateStr}（${h.weekday}）${h.name}`,
+      fmtProduct(h.index,  '指數 ES/NQ/YM'),
+      fmtProduct(h.energy, '能源 CL/NG   '),
+      fmtProduct(h.metals, '貴金屬 GC/SI '),
+    ];
+    return rows.join('\n');
+  });
+
+  const header = [
+    `📅 ${year} 年 CME 美國期貨假期休市時間`,
+    '（電子盤 Globex，台灣時間 UTC+8）',
+    '正常收盤：夏令 06:00／冬令 07:00 台灣時間',
   ].join('\n');
 
-  /* ── Early close section ── */
-  const earlySection = earlyClose.length
-    ? [
-        '【提前休市（電子盤 Globex 台灣時間）】',
-        '正常收盤：夏令 06:00／冬令 07:00 台灣時間',
-        '',
-        ...earlyClose.map((e) => [
-          `▸ 美國 ${e.usDateStr}（${e.usWeekday}）${e.name}`,
-          `  ${PRODUCTS_LABEL[e.products] || e.products}`,
-          `  提前至台灣時間 ${e.twDateStr}（${e.twWeekday}）凌晨 ${e.twTime} 截止`,
-          `  （美國中部時間 ${e.ctRef}）`,
-        ].join('\n')),
-      ].join('\n')
-    : '';
+  const footer = [
+    '⚠ CME 通常於假日前 ~2 週發布精確時間。',
+    '請至 cmegroup.com/trading-hours.html 確認最新公告。',
+  ].join('\n');
 
-  const header = `📅 ${year} 年 CME 美國期貨休市日\n能源（CL/NG）・指數（ES/NQ/YM）・貴金屬（GC/SI）`;
-  const footer = '⚠ 以 CME 官方公告為準，請於交易前確認最新時程。';
-
-  return [header, '', fullSection, '', earlySection, '', footer]
-    .filter((s) => s !== undefined)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return [header, '', ...lines, '', footer].join('\n');
 };
 
 /**
@@ -75,8 +75,7 @@ const exec = (context) => check(context) && (
   async () => {
     try {
       const year = parseYear(context.trimmedText);
-      const reply = buildReply(year);
-      context.pushText(reply);
+      context.pushText(buildReply(year));
     } catch (err) {
       context.pushError(err);
     }
