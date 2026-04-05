@@ -1,7 +1,7 @@
 /**
  * 隔年 CME 假日資料預抓邏輯（無 cron，事件驅動）
  *
- * 觸發條件：本週（週日~週六）跨越到隔年時（即含有元旦的那一週）
+ * 觸發條件：每年 10/31、11/1、11/2（CME Q4 公告期，三天互為 retry）
  * 每次 webhook 請求都會做一次 O(1) 日期判斷，命中才計算+快取。
  * 快取已存在時直接跳過，不重複計算。
  */
@@ -31,14 +31,13 @@ const getDSTDates = (year) => {
 };
 
 /**
- * 本週（週日~週六）的週六是否落在隔年？
- * 例：2026-12-27（週日）到 2027-01-01（週六）→ 週六年份 > 今日年份 → true
+ * 今天是否為每年的 10/31、11/1 或 11/2？
  */
-const isCurrentWeekCrossYear = () => {
+const isTriggerDate = () => {
   const today = new Date();
-  const sat   = new Date(today);
-  sat.setDate(today.getDate() + (6 - today.getDay())); // 本週六
-  return sat.getFullYear() > today.getFullYear();
+  const m = today.getMonth() + 1; // 1-based
+  const d = today.getDate();
+  return (m === 10 && d === 31) || (m === 11 && (d === 1 || d === 2));
 };
 
 /**
@@ -46,7 +45,7 @@ const isCurrentWeekCrossYear = () => {
  * 條件不符或快取已存在時立即 return，幾乎零開銷。
  */
 const maybePrefetchNextYear = () => {
-  if (!isCurrentWeekCrossYear()) return;
+  if (!isTriggerDate()) return;
 
   const nextYear = new Date().getFullYear() + 1;
   if (loadCache(nextYear)) return; // 已快取，跳過
