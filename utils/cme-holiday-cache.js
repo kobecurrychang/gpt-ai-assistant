@@ -1,22 +1,21 @@
 /**
- * Local JSON cache for CME holiday advisory data.
+ * Local JSON cache for computed CME holiday schedule.
  *
  * Cache file: <project-root>/storage/cme-holidays-cache.json
  *
  * Schema:
  * {
  *   "2026": {
- *     "fetchedAt": "2026-03-15T10:00:00.000Z",   // ISO timestamp
- *     "advisoryLinks": [
- *       { "name": "Good Friday", "url": "https://..." },
- *       ...
- *     ]
+ *     "cachedAt"  : "2026-04-05T07:00:00.000Z",
+ *     "dst"       : { "start": "2026-03-08", "startWd": "週日",
+ *                     "end":   "2026-11-01", "endWd":   "週日" },
+ *     "holidays"  : [ { dateStr, weekday, name, index, energy, metals }, ... ]
  *   }
  * }
  *
- * ⚠ On serverless platforms (e.g. Vercel), the filesystem is read-only
- *   after deployment. Writes will silently fail; reads of any pre-bundled
- *   cache file will still work.
+ * The data is deterministic (pure date math), so it never goes stale.
+ * ⚠ On serverless (e.g. Vercel), writes silently fail; the cache won't persist
+ *   across deployments, but the app still works correctly via recomputation.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -27,10 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR  = join(__dirname, '..', 'storage');
 const CACHE_FILE = join(CACHE_DIR, 'cme-holidays-cache.json');
 
-/** How many days before a cached entry is considered stale */
-const CACHE_STALE_DAYS = 7;
-
-/* ─── Internal helpers ──────────────────────────────────────────────────── */
+/* ─── File helpers ──────────────────────────────────────────────────────── */
 
 const readRaw = () => {
   try {
@@ -47,68 +43,39 @@ const writeRaw = (data) => {
     writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
     return true;
   } catch {
-    // Silently fail on read-only filesystems (serverless)
-    return false;
+    return false; // read-only filesystem (serverless) – silent fail
   }
 };
 
 /* ─── Public API ────────────────────────────────────────────────────────── */
 
 /**
- * Load cached advisory data for a year.
- * Returns null if no cache exists or cache is stale.
+ * Load cached holiday schedule for a year.
+ * Returns null if not cached yet.
  *
- * @param {number}  year
- * @param {boolean} [allowStale=false] – if true, return stale data rather than null
- * @returns {{ fetchedAt: string, advisoryLinks: Array } | null}
+ * @param {number} year
+ * @returns {{ cachedAt: string, dst: object, holidays: Array } | null}
  */
-const loadCache = (year, allowStale = false) => {
-  const all = readRaw();
-  const entry = all[String(year)];
-  if (!entry) return null;
-
-  if (!allowStale) {
-    const age = (Date.now() - new Date(entry.fetchedAt).getTime()) / 86400000;
-    if (age > CACHE_STALE_DAYS) return null;
-  }
-
-  return entry;
+const loadCache = (year) => {
+  const entry = readRaw()[String(year)];
+  return entry ?? null;
 };
 
 /**
- * Save advisory data for a year to the cache.
+ * Save computed holiday schedule for a year.
  *
  * @param {number} year
- * @param {{ advisoryLinks: Array }} data
- * @returns {boolean} true if saved successfully
+ * @param {{ dst: object, holidays: Array }} data
+ * @returns {boolean} true if written to disk
  */
 const saveCache = (year, data) => {
   const all = readRaw();
   all[String(year)] = {
-    fetchedAt: new Date().toISOString(),
-    advisoryLinks: data.advisoryLinks,
+    cachedAt: new Date().toISOString(),
+    dst:      data.dst,
+    holidays: data.holidays,
   };
-  const ok = writeRaw(all);
-  return ok;
+  return writeRaw(all);
 };
 
-/**
- * Return cache metadata for display.
- * @param {number} year
- * @returns {{ exists: boolean, fetchedAt?: string, stale?: boolean }}
- */
-const cacheInfo = (year) => {
-  const all = readRaw();
-  const entry = all[String(year)];
-  if (!entry) return { exists: false };
-
-  const age = (Date.now() - new Date(entry.fetchedAt).getTime()) / 86400000;
-  return {
-    exists:    true,
-    fetchedAt: entry.fetchedAt,
-    stale:     age > CACHE_STALE_DAYS,
-    ageDays:   Math.floor(age),
-  };
-};
-
-export { cacheInfo, loadCache, saveCache, CACHE_FILE };
+export { loadCache, saveCache, CACHE_FILE };

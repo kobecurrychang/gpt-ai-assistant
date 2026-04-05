@@ -1,4 +1,5 @@
 import getFuturesHolidays from '../../utils/get-futures-holidays.js';
+import { loadCache, saveCache } from '../../utils/cme-holiday-cache.js';
 import { COMMAND_FUTURES_HOLIDAYS } from '../commands/index.js';
 import Context from '../context.js';
 
@@ -38,7 +39,12 @@ const nthWeekday = (year, month, weekday, n) => {
 const getDSTDates = (year) => {
   const start = nthWeekday(year, 2,  0, 2);  // 2nd Sun Mar
   const end   = nthWeekday(year, 10, 0, 1);  // 1st Sun Nov
-  return { start, end };
+  return {
+    start:   fmt(start),
+    startWd: wdZH(start),
+    end:     fmt(end),
+    endWd:   wdZH(end),
+  };
 };
 
 /* ─── Format one product row ─────────────────────────────────────────────── */
@@ -50,14 +56,11 @@ const row = (label, p) => {
 
 /* ─── Build full reply ────────────────────────────────────────────────────── */
 
-const buildReply = (year) => {
-  const holidays = getFuturesHolidays(year);
-  const { start: dstStart, end: dstEnd } = getDSTDates(year);
-
+const buildReply = (year, dst, holidays) => {
   const dstLine = [
     `🕐 ${year} 美國夏令/冬令時間`,
-    `  夏令（CDT, CT+13h）：${fmt(dstStart)}（${wdZH(dstStart)}）起`,
-    `  冬令（CST, CT+14h）：${fmt(dstEnd)}（${wdZH(dstEnd)}）起`,
+    `  夏令（CDT, CT+13h）：${dst.start}（${dst.startWd}）起`,
+    `  冬令（CST, CT+14h）：${dst.end}（${dst.endWd}）起`,
     `  正常電子盤收盤：夏令 06:00 ／冬令 07:00（台灣時間）`,
   ].join('\n');
 
@@ -97,7 +100,20 @@ const buildReply = (year) => {
 const exec = (context) => check(context) && (
   async () => {
     try {
-      context.pushText(buildReply(parseYear(context.trimmedText)));
+      const year = parseYear(context.trimmedText);
+
+      // 1. Check cache first
+      let cached = loadCache(year);
+
+      if (!cached) {
+        // 2. Compute and save to cache
+        const holidays = getFuturesHolidays(year);
+        const dst      = getDSTDates(year);
+        saveCache(year, { dst, holidays });
+        cached = { dst, holidays };
+      }
+
+      context.pushText(buildReply(year, cached.dst, cached.holidays));
     } catch (err) {
       context.pushError(err);
     }
