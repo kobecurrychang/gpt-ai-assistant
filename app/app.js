@@ -9,6 +9,7 @@ import {
   drawHandler,
   forgetHandler,
   futuresHolidaysHandler,
+  futuresSettlementsHandler,
   enquireHandler,
   reportHandler,
   retryHandler,
@@ -33,6 +34,7 @@ const handleContext = async (context) => (
   || drawHandler(context)
   || forgetHandler(context)
   || futuresHolidaysHandler(context)
+  || futuresSettlementsHandler(context)
   || enquireHandler(context)
   || reportHandler(context)
   || retryHandler(context)

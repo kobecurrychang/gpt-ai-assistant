@@ -92,6 +92,9 @@ const en = {
   __COMMAND_FUTURES_HOLIDAYS_LABEL: 'US Futures Holidays',
   __COMMAND_FUTURES_HOLIDAYS_TEXT: 'US Futures Holidays',
   __COMMAND_FUTURES_HOLIDAYS_ALIASES: ['futures holidays', 'futures holiday', 'cme holidays'],
+  __COMMAND_FUTURES_SETTLEMENTS_LABEL: 'US Futures Settlements',
+  __COMMAND_FUTURES_SETTLEMENTS_TEXT: 'US Futures Settlements',
+  __COMMAND_FUTURES_SETTLEMENTS_ALIASES: ['futures settlements', 'settlement dates', 'cme settlements'],
   __COMMAND_TRANSLATE_TO_EN_LABEL: '翻成英文', // TODO
   __COMMAND_TRANSLATE_TO_EN_TEXT: '翻成英文', // TODO
   __COMMAND_TRANSLATE_TO_EN_PROMPT: '請將以下內容翻譯成英文。', // TODO

@@ -1,6 +1,7 @@
 import activateHandler from './activate.js';
 import commandHandler from './command.js';
 import futuresHolidaysHandler from './futures-holidays.js';
+import futuresSettlementsHandler from './futures-settlements.js';
 import continueHandler from './continue.js';
 import deactivateHandler from './deactivate.js';
 import deployHandler from './deploy.js';
@@ -24,6 +25,7 @@ export {
   drawHandler,
   forgetHandler,
   futuresHolidaysHandler,
+  futuresSettlementsHandler,
   enquireHandler,
   reportHandler,
   retryHandler,
