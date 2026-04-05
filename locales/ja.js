@@ -89,6 +89,11 @@ const ja = {
   __COMMAND_SYS_VERSION_LABEL: 'バージョン',
   __COMMAND_SYS_VERSION_TEXT: 'バージョン',
   __COMMAND_SYS_VERSION_REPLY: (version, isLatest) => `Your version is ${isLatest ? 'up-to-date' : version}.`,
+  __COMMAND_FUTURES_HOLIDAYS_LABEL: '米国先物市場の休日',
+  __COMMAND_FUTURES_HOLIDAYS_TEXT: '米国先物市場の休日',
+  __COMMAND_FUTURES_HOLIDAYS_ALIASES: ['先物休日'],
+  __COMMAND_FUTURES_HOLIDAYS_RESULT: (year, lines) => `📅 ${year}年 米国先物市場休場日（CME）\n\n${lines}`,
+  __COMMAND_FUTURES_HOLIDAYS_LINE: ({ date, weekday, name }) => `${date}（${weekday}）${name}`,
   __COMMAND_TRANSLATE_TO_EN_LABEL: '翻成英文', // TODO
   __COMMAND_TRANSLATE_TO_EN_TEXT: '翻成英文', // TODO
   __COMMAND_TRANSLATE_TO_EN_PROMPT: '請將以下內容翻譯成英文。', // TODO

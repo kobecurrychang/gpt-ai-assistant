@@ -1,4 +1,5 @@
 import addMark from './add-mark.js';
+import getFuturesHolidays from './get-futures-holidays.js';
 import convertText from './convert-text.js';
 import fetchAnswer from './fetch-answer.js';
 import fetchAudio from './fetch-audio.js';
@@ -16,6 +17,7 @@ import validateSignature from './validate-signature.js';
 
 export {
   addMark,
+  getFuturesHolidays,
   convertText,
   fetchAnswer,
   fetchAudio,
