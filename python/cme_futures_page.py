@@ -171,7 +171,7 @@ QFrame#settleRow:hover {{
 # ─── Worker thread (compute in background) ───────────────────────────────────
 
 class _Worker(QThread):
-    done = Signal(int, dict, dict, dict)  # year, dst, holidays, settlements
+    done = Signal(int, object, object, object)  # year, dst, holidays, settlements
 
     def __init__(self, year: int):
         super().__init__()
