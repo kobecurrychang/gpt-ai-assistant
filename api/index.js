@@ -4,6 +4,7 @@ import config from '../config/index.js';
 import { validateLineSignature } from '../middleware/index.js';
 import storage from '../storage/index.js';
 import { fetchVersion, getVersion } from '../utils/index.js';
+import { registerPrefetchCron } from '../utils/prefetch-holidays.js';
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.post(config.APP_WEBHOOK_PATH, validateLineSignature, async (req, res) => {
 
 if (config.APP_PORT) {
   app.listen(config.APP_PORT);
+  registerPrefetchCron();
 }
 
 export default app;
