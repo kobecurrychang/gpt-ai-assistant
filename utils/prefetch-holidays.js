@@ -1,13 +1,11 @@
 /**
- * Pre-fetch & cache the next year's CME holiday schedule.
+ * 隔年 CME 假日資料預抓邏輯（無 cron，事件驅動）
  *
- * Triggered by a cron on Oct 1 / Nov 1 / Dec 1 each year.
- * If the cache already exists for that year, silently skips.
- * "一直到資訊完善" — the three monthly attempts act as automatic retries
- * in case the server was down or the filesystem was unavailable on prior runs.
+ * 觸發條件：本週（週日~週六）跨越到隔年時（即含有元旦的那一週）
+ * 每次 webhook 請求都會做一次 O(1) 日期判斷，命中才計算+快取。
+ * 快取已存在時直接跳過，不重複計算。
  */
 
-import { schedule } from 'node-cron';
 import getFuturesHolidays from './get-futures-holidays.js';
 import { loadCache, saveCache } from './cme-holiday-cache.js';
 
@@ -32,13 +30,26 @@ const getDSTDates = (year) => {
   return { start: fmt(start), startWd: wdZH(start), end: fmt(end), endWd: wdZH(end) };
 };
 
-const prefetchNextYear = () => {
-  const nextYear = new Date().getFullYear() + 1;
+/**
+ * 本週（週日~週六）的週六是否落在隔年？
+ * 例：2026-12-27（週日）到 2027-01-01（週六）→ 週六年份 > 今日年份 → true
+ */
+const isCurrentWeekCrossYear = () => {
+  const today = new Date();
+  const sat   = new Date(today);
+  sat.setDate(today.getDate() + (6 - today.getDay())); // 本週六
+  return sat.getFullYear() > today.getFullYear();
+};
 
-  if (loadCache(nextYear)) {
-    console.log(`[CME Cache] ${nextYear} 假日資料已存在，跳過預抓。`);
-    return;
-  }
+/**
+ * 每次 webhook 請求呼叫一次。
+ * 條件不符或快取已存在時立即 return，幾乎零開銷。
+ */
+const maybePrefetchNextYear = () => {
+  if (!isCurrentWeekCrossYear()) return;
+
+  const nextYear = new Date().getFullYear() + 1;
+  if (loadCache(nextYear)) return; // 已快取，跳過
 
   try {
     const holidays = getFuturesHolidays(nextYear);
@@ -50,14 +61,4 @@ const prefetchNextYear = () => {
   }
 };
 
-/**
- * Register cron jobs. Call once at app startup.
- * Runs at 02:00 (server local time) on Oct 1, Nov 1, Dec 1 each year.
- */
-const registerPrefetchCron = () => {
-  // "0 2 1 10,11,12 *" — 02:00 on the 1st of Oct / Nov / Dec
-  schedule('0 2 1 10,11,12 *', prefetchNextYear, { timezone: 'Asia/Taipei' });
-  console.log('[CME Cache] 預抓排程已啟動（10/1、11/1、12/1 02:00 台灣時間）。');
-};
-
-export { registerPrefetchCron, prefetchNextYear };
+export { maybePrefetchNextYear };
