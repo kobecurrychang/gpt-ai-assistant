@@ -13,6 +13,34 @@ const parseYear = (text) => {
   return m ? parseInt(m[0], 10) : new Date().getFullYear();
 };
 
+/* ─── DST transition dates ───────────────────────────────────────────────── */
+
+const WD_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+const wdZH  = (d) => `週${WD_ZH[d.getDay()]}`;
+const fmt   = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+const nthWeekday = (year, month, weekday, n) => {
+  if (n > 0) {
+    const first = new Date(year, month, 1);
+    const diff  = (weekday - first.getDay() + 7) % 7;
+    return new Date(year, month, 1 + diff + (n - 1) * 7);
+  }
+  const last = new Date(year, month + 1, 0);
+  const diff = (last.getDay() - weekday + 7) % 7;
+  return new Date(year, month, last.getDate() - diff + (n + 1) * 7);
+};
+
+/**
+ * Return DST start/end for a given year (US rules).
+ * Start: 2nd Sunday in March (CDT begins, CT = UTC-5)
+ * End  : 1st Sunday in November (CST begins, CT = UTC-6)
+ */
+const getDSTDates = (year) => {
+  const start = nthWeekday(year, 2,  0, 2);  // 2nd Sun Mar
+  const end   = nthWeekday(year, 10, 0, 1);  // 1st Sun Nov
+  return { start, end };
+};
+
 /* ─── Format one product row ─────────────────────────────────────────────── */
 
 const row = (label, p) => {
@@ -24,6 +52,14 @@ const row = (label, p) => {
 
 const buildReply = (year) => {
   const holidays = getFuturesHolidays(year);
+  const { start: dstStart, end: dstEnd } = getDSTDates(year);
+
+  const dstLine = [
+    `🕐 ${year} 美國夏令/冬令時間`,
+    `  夏令（CDT, CT+13h）：${fmt(dstStart)}（${wdZH(dstStart)}）起`,
+    `  冬令（CST, CT+14h）：${fmt(dstEnd)}（${wdZH(dstEnd)}）起`,
+    `  正常電子盤收盤：夏令 06:00 ／冬令 07:00（台灣時間）`,
+  ].join('\n');
 
   const lines = holidays.map((h) => {
     const allFull = h.index.close === 'full'
@@ -44,7 +80,8 @@ const buildReply = (year) => {
 
   return [
     `📅 ${year} CME 美國期貨休市日（台灣時間 UTC+8）`,
-    '正常電子盤收盤：夏令 06:00 ／冬令 07:00（台灣時間）',
+    '',
+    dstLine,
     '',
     lines.join('\n\n'),
     '',
