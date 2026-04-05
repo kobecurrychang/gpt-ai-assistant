@@ -253,28 +253,30 @@ def get_futures_holidays(year: int) -> list:
     memorial_day   = nth_weekday(year, 4, 1, -1)   # last Monday May
     independence   = observe(date(year, 7, 4))      # July 4 observed
     labor_day      = nth_weekday(year, 8, 1, 1)    # 1st Monday Sep
-    thanksgiving   = nth_weekday(year, 10, 4, 4)   # 4th Thursday Nov
-    christmas      = observe(date(year, 12, 25))    # Dec 25 observed
-    new_years      = observe(date(year, 1, 1))      # Jan 1 observed
+    thanksgiving   = nth_weekday(year, 10, 4, 4)              # 4th Thursday Nov
+    black_friday   = thanksgiving + timedelta(days=1)          # Friday after Thanksgiving
+    christmas      = observe(date(year, 12, 25))               # Dec 25 observed
+    new_years      = observe(date(year, 1, 1))                 # Jan 1 observed
 
     entries = [
-        _build_entry(new_years,      "元旦 (New Year's Day)",        SCHEDULES['fullAll']),
-        _build_entry(mlk_day,        '馬丁路德金紀念日 (MLK Day)',     SCHEDULES['standard']),
-        _build_entry(presidents_day, "總統日 (Presidents' Day)",     SCHEDULES['standard']),
+        _build_entry(new_years,      "元旦 (New Year's Day)",              SCHEDULES['fullAll']),
+        _build_entry(mlk_day,        '馬丁路德金紀念日 (MLK Day)',           SCHEDULES['standard']),
+        _build_entry(presidents_day, "總統日 (Presidents' Day)",           SCHEDULES['standard']),
         _build_entry(good_friday,    '耶穌受難日 (Good Friday)',
                      SCHEDULES['goodFriNFP'] if nfp_on_gf else SCHEDULES['goodFriAll']),
-        _build_entry(memorial_day,   '陣亡將士紀念日 (Memorial Day)', SCHEDULES['memorial']),
-        _build_entry(independence,   '獨立紀念日 (Independence Day)', SCHEDULES['standard']),
-        _build_entry(labor_day,      '勞動節 (Labor Day)',            SCHEDULES['memorial']),
-        _build_entry(thanksgiving,   '感恩節 (Thanksgiving Day)',     SCHEDULES['fullAll']),
-        _build_entry(christmas,      '聖誕節 (Christmas Day)',        SCHEDULES['fullAll']),
+        _build_entry(memorial_day,   '陣亡將士紀念日 (Memorial Day)',        SCHEDULES['memorial']),
+        _build_entry(independence,   '獨立紀念日 (Independence Day)',       SCHEDULES['standard']),
+        _build_entry(labor_day,      '勞動節 (Labor Day)',                  SCHEDULES['memorial']),
+        _build_entry(thanksgiving,   '感恩節 (Thanksgiving Day)',           SCHEDULES['fullAll']),
+        _build_entry(black_friday,   '感恩節翌日 (Black Friday)',           SCHEDULES['standard']),
+        _build_entry(christmas,      '聖誕節 (Christmas Day)',              SCHEDULES['fullAll']),
     ]
 
-    # Juneteenth: federal holiday since 2022
+    # Juneteenth National Independence Day: federal holiday since 2022
     if year >= 2022:
         juneteenth = observe(date(year, 6, 19))
         entries.append(
-            _build_entry(juneteenth, '六月節 (Juneteenth)', SCHEDULES['standard']))
+            _build_entry(juneteenth, '六月節國家獨立紀念日 (Juneteenth)', SCHEDULES['standard']))
 
     return sorted(entries, key=lambda x: x['dateStr'])
 

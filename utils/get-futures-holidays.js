@@ -181,20 +181,22 @@ const getFuturesHolidays = (year) => {
   const independenceDay = observe(new Date(year, 6, 4));
   const laborDay      = nthWeekday(year, 8,  1, 1);
   const thanksgiving  = nthWeekday(year, 10, 4, 4);
+  const blackFriday   = new Date(thanksgiving.getFullYear(), thanksgiving.getMonth(), thanksgiving.getDate() + 1);
   const christmasDay  = observe(new Date(year, 11, 25));
   const newYearsDay   = observe(new Date(year, 0, 1));
 
   const holidays = [
-    buildEntry(newYearsDay,      "元旦 (New Year's Day)",             SCHEDULES.fullAll),
-    buildEntry(mlkDay,           '馬丁路德金紀念日 (MLK Day)',           SCHEDULES.standard),
-    buildEntry(presidentsDay,    "總統日 (Presidents' Day)",           SCHEDULES.standard),
-    buildEntry(goodFriday,       '耶穌受難日 (Good Friday)',            nfpOnGF ? SCHEDULES.goodFriNFP : SCHEDULES.goodFriAll),
-    buildEntry(memorialDay,      '陣亡將士紀念日 (Memorial Day)',        SCHEDULES.memorial),
-    ...(juneteenth ? [buildEntry(juneteenth, '六月節 (Juneteenth)',    SCHEDULES.standard)] : []),
-    buildEntry(independenceDay,  '獨立紀念日 (Independence Day)',       SCHEDULES.standard),
-    buildEntry(laborDay,         '勞動節 (Labor Day)',                 SCHEDULES.memorial),
-    buildEntry(thanksgiving,     '感恩節 (Thanksgiving Day)',           SCHEDULES.fullAll),
-    buildEntry(christmasDay,     '聖誕節 (Christmas Day)',              SCHEDULES.fullAll),
+    buildEntry(newYearsDay,      "元旦 (New Year's Day)",                          SCHEDULES.fullAll),
+    buildEntry(mlkDay,           '馬丁路德金紀念日 (MLK Day)',                       SCHEDULES.standard),
+    buildEntry(presidentsDay,    "總統日 (Presidents' Day)",                        SCHEDULES.standard),
+    buildEntry(goodFriday,       '耶穌受難日 (Good Friday)',                        nfpOnGF ? SCHEDULES.goodFriNFP : SCHEDULES.goodFriAll),
+    buildEntry(memorialDay,      '陣亡將士紀念日 (Memorial Day)',                    SCHEDULES.memorial),
+    ...(juneteenth ? [buildEntry(juneteenth, '六月節國家獨立紀念日 (Juneteenth)', SCHEDULES.standard)] : []),
+    buildEntry(independenceDay,  '獨立紀念日 (Independence Day)',                   SCHEDULES.standard),
+    buildEntry(laborDay,         '勞動節 (Labor Day)',                              SCHEDULES.memorial),
+    buildEntry(thanksgiving,     '感恩節 (Thanksgiving Day)',                       SCHEDULES.fullAll),
+    buildEntry(blackFriday,      '感恩節翌日 (Black Friday)',                       SCHEDULES.standard),
+    buildEntry(christmasDay,     '聖誕節 (Christmas Day)',                          SCHEDULES.fullAll),
   ];
 
   return holidays.sort((a, b) => (a.dateStr < b.dateStr ? -1 : 1));
