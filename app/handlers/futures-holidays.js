@@ -32,9 +32,6 @@ const buildReply = (year) => {
   const { fullClose, earlyClose } = getFuturesHolidays(year);
 
   /* ── Full close section ── */
-  const fcAll   = fullClose.filter((h) => h.products === 'all');
-  const fcOther = fullClose.filter((h) => h.products !== 'all');
-
   const fmtFull = (h) => {
     const line = `▸ ${h.dateStr}（${h.weekday}）${h.name}`;
     return h.note ? `${line}\n  ⚠ ${h.note}` : line;
@@ -42,14 +39,7 @@ const buildReply = (year) => {
 
   const fullSection = [
     `【完全休市 — ${PRODUCTS_LABEL.all}】`,
-    ...fcAll.map(fmtFull),
-    ...(fcOther.length
-      ? [
-          '',
-          `【完全休市 — ${PRODUCTS_LABEL.index_metals}（能源 CL/NG ⚠ 可能照常）】`,
-          ...fcOther.map(fmtFull),
-        ]
-      : []),
+    ...fullClose.map(fmtFull),
   ].join('\n');
 
   /* ── Early close section ── */

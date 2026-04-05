@@ -148,13 +148,31 @@ const getFuturesHolidays = (year) => {
   const laborDay       = nthWeekday(year, 8,  1, 1);   // 1st Mon Sep
   const thanksgiving   = nthWeekday(year, 10, 4, 4);   // 4th Thu Nov
 
+  /* ── Good Friday equity-index special note ──
+   * Energy (NYMEX CL/NG) and Metals (COMEX GC/SI) are fully closed on Good Friday.
+   * Equity index (ES/NQ/YM) is normally also closed, BUT in years when the US
+   * Employment Situation (NFP) report falls on Good Friday (e.g. 2026), CME runs
+   * an abbreviated session that ends at 09:15 CT (= 22:15 台灣時間 same day).
+   * Always verify via CME's official holiday advisory before trading.
+   */
+  const nfpOnGoodFriday = (() => {
+    // NFP is released on the first Friday of the month (usually April, sometimes March/May).
+    // Check if the first Friday of the same month as Good Friday equals Good Friday.
+    const firstFriOfMonth = nthWeekday(goodFriday.getFullYear(), goodFriday.getMonth(), 5, 1);
+    return fmt(firstFriOfMonth) === fmt(goodFriday);
+  })();
+
+  const goodFridayNote = nfpOnGoodFriday
+    ? `指數（ES/NQ/YM）因 NFP 就業報告當日，設縮短交易至 09:15 CT（台灣時間 ${ctToTW(goodFriday, 9, 15).time} 同日）；能源・貴金屬全日無交易`
+    : '能源（CL/NG）・貴金屬（GC/SI）・指數（ES/NQ/YM）全日無交易';
+
   /* ── Full close list ── */
   const fullClose = [
     { date: newYearsDay,    name: "元旦 (New Year's Day)",            products: 'all' },
     { date: mlkDay,         name: '馬丁路德金紀念日 (MLK Day)',          products: 'all' },
     { date: presidentsDay,  name: "總統日 (Presidents' Day)",          products: 'all' },
-    { date: goodFriday,     name: '耶穌受難日 (Good Friday)',           products: 'index_metals',
-      note: '能源（CL/NG）電子盤通常照常交易' },
+    { date: goodFriday,     name: '耶穌受難日 (Good Friday)',           products: 'all',
+      note: goodFridayNote },
     { date: memorialDay,    name: '陣亡將士紀念日 (Memorial Day)',       products: 'all' },
     ...(juneteenth ? [{ date: juneteenth, name: '六月節 (Juneteenth)', products: 'all' }] : []),
     { date: independenceDay,name: '獨立紀念日 (Independence Day)',      products: 'all' },
