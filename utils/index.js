@@ -1,5 +1,6 @@
 import addMark from './add-mark.js';
 import fetchCmeAdvisory from './fetch-cme-advisory.js';
+import { cacheInfo, loadCache, saveCache } from './cme-holiday-cache.js';
 import getFuturesHolidays from './get-futures-holidays.js';
 import convertText from './convert-text.js';
 import fetchAnswer from './fetch-answer.js';
@@ -18,8 +19,11 @@ import validateSignature from './validate-signature.js';
 
 export {
   addMark,
+  cacheInfo,
   fetchCmeAdvisory,
   getFuturesHolidays,
+  loadCache,
+  saveCache,
   convertText,
   fetchAnswer,
   fetchAudio,
